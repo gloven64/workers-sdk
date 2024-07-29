@@ -1,0 +1,3 @@
+name = "asset-server"
+main = "src/index.ts"
+compatibility_date = "2021-11-02" # Oldest version of the runtime
