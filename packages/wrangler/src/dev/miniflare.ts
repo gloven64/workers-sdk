@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { randomUUID } from "node:crypto";
-import path from "node:path";
+import path, { dirname } from "node:path";
 import * as esmLexer from "es-module-lexer";
 import {
 	CoreHeaders,
@@ -16,6 +16,7 @@ import {
 	EXTERNAL_AI_WORKER_NAME,
 	EXTERNAL_AI_WORKER_SCRIPT,
 } from "../ai/fetcher";
+import { ExperimentalAssets } from "../config/environment";
 import { ModuleTypeToRuleType } from "../deployment-bundle/module-collection";
 import { withSourceURLs } from "../deployment-bundle/source-url";
 import { UserError } from "../errors";
@@ -172,6 +173,7 @@ export interface ConfigBundle {
 	bindings: CfWorkerInit["bindings"];
 	workerDefinitions: WorkerRegistry | undefined;
 	legacyAssetPaths: LegacyAssetPaths | undefined;
+	experimentalAssets: ExperimentalAssets | undefined;
 	initialPort: Port;
 	initialIp: string;
 	rules: Config["rules"];
@@ -374,7 +376,7 @@ type MiniflareBindingsConfig = Pick<
 	| "services"
 	| "serviceBindings"
 > &
-	Partial<Pick<ConfigBundle, "format" | "bundle">>;
+	Partial<Pick<ConfigBundle, "format" | "bundle" | "experimentalAssets">>;
 
 // TODO(someday): would be nice to type these methods more, can we export types for
 //  each plugin options schema and use those
@@ -408,7 +410,9 @@ export function buildMiniflareBindingOptions(config: MiniflareBindingsConfig): {
 	// Setup service bindings to external services
 	const serviceBindings: NonNullable<WorkerOptions["serviceBindings"]> = {
 		...config.serviceBindings,
+		...(config.experimentalAssets ? { ASSET_SERVER: "asset-server" } : {}),
 	};
+
 	const notFoundServices = new Set<string>();
 	for (const service of config.services ?? []) {
 		if (service.service === config.name) {
@@ -837,6 +841,31 @@ export async function buildMiniflareOptions(
 		}
 	}
 
+	// TODO @Carmen can we read the toml config instead?
+	const assetServerModulePath = require.resolve(
+		"@cloudflare/workers-shared/dist/asset-server-worker.mjs"
+	);
+	const assetServerWorker: WorkerOptions | undefined = config.experimentalAssets
+		? {
+				name: "asset-server",
+				compatibilityDate: "2024-01-01",
+				compatibilityFlags: ["nodejs_compat"],
+				modulesRoot: dirname(assetServerModulePath),
+				modules: [
+					{
+						type: "ESModule",
+						path: assetServerModulePath,
+					},
+				],
+				unsafeDirectSockets: [
+					{
+						host: "127.0.0.1",
+						port: 0,
+					},
+				],
+			}
+		: undefined;
+
 	const upstream =
 		typeof config.localUpstream === "string"
 			? `${config.upstreamProtocol}://${config.localUpstream}`
@@ -879,6 +908,9 @@ export async function buildMiniflareOptions(
 					proxy: true,
 				})),
 			},
+			...(config.experimentalAssets
+				? [assetServerWorker as WorkerOptions]
+				: []),
 			...externalWorkers,
 		],
 	};
@@ -947,9 +979,11 @@ export class MiniflareServer extends TypedEventTarget<MiniflareServerEventMap> {
 					config,
 					this.#proxyToUserWorkerAuthenticationSecret
 				);
+
 			if (opts?.signal?.aborted) {
 				return;
 			}
+
 			if (this.#mf === undefined) {
 				this.#mf = new Miniflare(options);
 			} else {
@@ -981,6 +1015,7 @@ export class MiniflareServer extends TypedEventTarget<MiniflareServerEventMap> {
 			this.dispatchEvent(new ErrorEvent("error", { error }));
 		}
 	}
+
 	onBundleUpdate(config: ConfigBundle, opts?: Abortable): Promise<void> {
 		return this.#mutex.runWith(() => this.#onBundleUpdate(config, opts));
 	}
