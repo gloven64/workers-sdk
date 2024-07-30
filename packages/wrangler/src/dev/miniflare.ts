@@ -16,7 +16,6 @@ import {
 	EXTERNAL_AI_WORKER_NAME,
 	EXTERNAL_AI_WORKER_SCRIPT,
 } from "../ai/fetcher";
-import { ExperimentalAssets } from "../config/environment";
 import { ModuleTypeToRuleType } from "../deployment-bundle/module-collection";
 import { withSourceURLs } from "../deployment-bundle/source-url";
 import { UserError } from "../errors";
@@ -25,6 +24,7 @@ import { getSourceMappedString } from "../sourcemap";
 import { updateCheck } from "../update-check";
 import type { ServiceFetch } from "../api";
 import type { Config } from "../config";
+import type { ExperimentalAssets } from "../config/environment";
 import type {
 	CfD1Database,
 	CfDurableObject,

@@ -2,12 +2,12 @@ import assert from "node:assert";
 import chalk from "chalk";
 import { useEffect, useRef } from "react";
 import onExit from "signal-exit";
-import { ExperimentalAssets } from "../config/environment";
 import { registerWorker } from "../dev-registry";
 import { logger } from "../logger";
 import { DEFAULT_WORKER_NAME, MiniflareServer } from "./miniflare";
 import type { ProxyData } from "../api";
 import type { Config } from "../config";
+import type { ExperimentalAssets } from "../config/environment";
 import type {
 	CfDurableObject,
 	CfScriptFormat,
