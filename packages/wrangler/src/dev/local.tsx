@@ -2,6 +2,7 @@ import assert from "node:assert";
 import chalk from "chalk";
 import { useEffect, useRef } from "react";
 import onExit from "signal-exit";
+import { ExperimentalAssets } from "../config/environment";
 import { registerWorker } from "../dev-registry";
 import { logger } from "../logger";
 import { DEFAULT_WORKER_NAME, MiniflareServer } from "./miniflare";
@@ -31,6 +32,7 @@ export interface LocalProps {
 	bindings: CfWorkerInit["bindings"];
 	workerDefinitions: WorkerRegistry | undefined;
 	legacyAssetPaths: LegacyAssetPaths | undefined;
+	experimentalAssets: ExperimentalAssets | undefined;
 	initialPort: number | undefined;
 	initialIp: string;
 	rules: Config["rules"];
@@ -90,6 +92,7 @@ export async function localPropsToConfigBundle(
 		bindings: props.bindings,
 		workerDefinitions: props.workerDefinitions,
 		legacyAssetPaths: props.legacyAssetPaths,
+		experimentalAssets: props.experimentalAssets,
 		initialPort: props.initialPort,
 		initialIp: props.initialIp,
 		rules: props.rules,

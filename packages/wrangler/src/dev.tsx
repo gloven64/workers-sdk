@@ -595,6 +595,34 @@ export async function startDev(args: StartDevOptions) {
 			);
 		}
 
+		const experimentalAssets = args.experimentalAssets
+			? { directory: args.experimentalAssets }
+			: config.experimental_assets;
+		if (experimentalAssets) {
+			const experimentalAssetsBasePath = getExperimentalAssetsBasePath(
+				config,
+				args.experimentalAssets
+			);
+			const resolvedExperimentalAssetsPath = path.resolve(
+				experimentalAssetsBasePath,
+				experimentalAssets.directory
+			);
+
+			if (!existsSync(resolvedExperimentalAssetsPath)) {
+				const sourceOfTruthMessage = args.experimentalAssets
+					? '"--experimental-assets" command line argument'
+					: '"experimental_assets.directory" field in your configuration file';
+
+				throw new UserError(
+					`The directory specified by the ${sourceOfTruthMessage} does not exist:\n` +
+						`${resolvedExperimentalAssetsPath}`
+				);
+			}
+
+			experimentalAssets.directory = resolvedExperimentalAssetsPath;
+			args.forceLocal = true;
+		}
+
 		const projectRoot = configPath && path.dirname(configPath);
 
 		const devEnv = new DevEnv();
@@ -771,6 +799,7 @@ export async function startDev(args: StartDevOptions) {
 					legacyAssets: (configParam) => configParam.legacy_assets,
 					enableServiceEnvironments: !(args.legacyEnv ?? true),
 				},
+				experimentalAssets,
 			} satisfies StartDevWorkerInput);
 
 			void metrics.sendMetricsEvent(
@@ -802,34 +831,6 @@ export async function startDev(args: StartDevOptions) {
 					rerender(await getDevReactElement(config));
 				}
 			});
-		}
-
-		const experimentalAssets = args.experimentalAssets
-			? { directory: args.experimentalAssets }
-			: config.experimental_assets;
-		if (experimentalAssets) {
-			const experimentalAssetsBasePath = getExperimentalAssetsBasePath(
-				config,
-				args.experimentalAssets
-			);
-			const resolvedExperimentalAssetsPath = path.resolve(
-				experimentalAssetsBasePath,
-				experimentalAssets.directory
-			);
-
-			if (!existsSync(resolvedExperimentalAssetsPath)) {
-				const sourceOfTruthMessage = args.experimentalAssets
-					? '"--experimental-assets" command line argument'
-					: '"experimental_assets.directory" field in your configuration file';
-
-				throw new UserError(
-					`The directory specified by the ${sourceOfTruthMessage} does not exist:\n` +
-						`${resolvedExperimentalAssetsPath}`
-				);
-			}
-
-			experimentalAssets.directory = resolvedExperimentalAssetsPath;
-			args.forceLocal = true;
 		}
 
 		const {
@@ -906,6 +907,7 @@ export async function startDev(args: StartDevOptions) {
 					}
 					legacyAssetPaths={legacyAssetPaths}
 					legacyAssetsConfig={configParam.legacy_assets}
+					experimentalAssets={experimentalAssets}
 					initialPort={
 						args.port ?? configParam.dev.port ?? (await getLocalPort())
 					}
@@ -1068,6 +1070,7 @@ export async function startApiDev(args: StartDevOptions) {
 				args.accountId ?? configParam.account_id ?? getAccountFromCache()?.id,
 			legacyAssetPaths: legacyAssetPaths,
 			legacyAssetsConfig: configParam.legacy_assets,
+			experimentalAssets: undefined,
 			//port can be 0, which means to use a random port
 			initialPort: args.port ?? configParam.dev.port ?? (await getLocalPort()),
 			initialIp: args.ip ?? configParam.dev.ip,
@@ -1205,6 +1208,18 @@ export async function validateDevServerSettings(
 	args: StartDevOptions,
 	config: Config
 ) {
+	if (
+		(args.legacyAssets ||
+			config.legacy_assets ||
+			args.experimentalAssets ||
+			config.experimental_assets) &&
+		(args.site || config.site)
+	) {
+		throw new UserError(
+			"Cannot use Assets and Workers Sites in the same Worker."
+		);
+	}
+
 	const entry = await getEntry(
 		{
 			legacyAssets: args.legacyAssets,
@@ -1252,18 +1267,6 @@ export async function validateDevServerSettings(
 						}${service.entrypoint ? `#${service.entrypoint}` : ""})`
 				)
 				.join(", ")}`
-		);
-	}
-
-	if (
-		(args.legacyAssets ||
-			config.legacy_assets ||
-			args.experimentalAssets ||
-			config.experimental_assets) &&
-		(args.site || config.site)
-	) {
-		throw new UserError(
-			"Cannot use Assets and Workers Sites in the same Worker."
 		);
 	}
 

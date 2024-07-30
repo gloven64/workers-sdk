@@ -204,6 +204,10 @@ async function resolveConfig(
 			legacyAssets: Boolean(legacyAssets),
 			script: input.entrypoint,
 			moduleRoot: input.build?.moduleRoot,
+			// getEntry only needs to know if experimental_assets was specified.
+			// The actualy value is not relevant here, which is why not passing
+			// the entire ExperimentalAssets object is fine.
+			experimentalAssets: input?.experimentalAssets?.directory,
 		},
 		config,
 		"dev"
@@ -257,6 +261,7 @@ async function resolveConfig(
 			capnp: input.unsafe?.capnp ?? unsafe?.capnp,
 			metadata: input.unsafe?.metadata ?? unsafe?.metadata,
 		},
+		experimentalAssets: input?.experimentalAssets,
 	} satisfies StartDevWorkerOptions;
 
 	if (resolved.legacy.legacyAssets && resolved.legacy.site) {

@@ -1,6 +1,7 @@
 import type { Config } from "../../config";
 import type {
 	CustomDomainRoute,
+	ExperimentalAssets,
 	Rule,
 	ZoneIdRoute,
 	ZoneNameRoute,
@@ -161,6 +162,7 @@ export interface StartDevWorkerInput {
 		enableServiceEnvironments?: boolean;
 	};
 	unsafe?: Omit<CfUnsafe, "bindings">;
+	experimentalAssets?: ExperimentalAssets;
 }
 
 export type StartDevWorkerOptions = StartDevWorkerInput & {
@@ -184,6 +186,7 @@ export type StartDevWorkerOptions = StartDevWorkerInput & {
 		persist: string;
 	};
 	entrypoint: string;
+	experimentalAssets?: ExperimentalAssets;
 };
 
 export type HookValues = string | number | boolean | object | undefined | null;
